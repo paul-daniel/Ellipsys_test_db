@@ -170,7 +170,7 @@ class TableReducer {
                         const tableName = `oa_trf_src_${col}_lkp`;
                         this.db.get(`SELECT id FROM ${tableName} WHERE champ = ?`, [row[col]], (err, rowReduced) => {
                             if (err) rowReject(err);
-                            rowResolve(rowReduced.id);
+                            rowResolve(rowReduced?.id);
                         });
                     });
                 });
