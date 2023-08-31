@@ -102,27 +102,25 @@ const createReducedTable = () => {
                 resolve()
             })
         })
-
-        db.run(`CREATE TABLE IF NOT EXISTS ${REDUCED_TABLE_NAME} (id INTEGER, )`)
     })
 }
 
 const fillReducedTable = () => {
     return new Promise((resolve, reject) => {
-        db.all(`SELECT DISTINCT * FROM ${REDUCED_TABLE_NAME}`, (err, rows)=>{
+        db.all(`SELECT DISTINCT * FROM ${SOURCE_TABLE_NAME}`, (err, rows)=>{
             if(err) reject(err)
             const colNames = allCols.join(', ')
-            const colValues = allCols.map(colname => '?').join(', ')
+            const colValues = allCols.map(_ => '?').join(', ')
             const insertStmt = db.prepare(`INSERT INTO ${REDUCED_TABLE_NAME}(${colNames}) VALUES (${colValues})`)
-
+            console.log('here', rows)
             rows.forEach(row => {
-                
+                console.log('here', row)
                 const promises = colsToReduce.map((col)=> {
-                    return new Promise((resolve, reject) => {
+                    return new Promise((rowResolve, rowReject) => {
                         const tableName = `oa_trf_src_${col}_lkp`;
                         db.get(`SELECT * FROM ${tableName} WHERE champ = ?`, [row[col]], (err, row) => {
-                            if(err) reject(err)
-                            resolve(row.id)
+                            if(err) rowReject(err)
+                            rowResolve(row.id)
                         })
                     })
                 })
@@ -131,12 +129,21 @@ const fillReducedTable = () => {
                     const mappedValues = [...ids]
                     unmodifiedCols.forEach(unmodifiedCol => {
                         mappedValues.push(row[unmodifiedCol])
-                        insertStmt(mappedValues)
+                        insertStmt.run(mappedValues)
                     })
-
                 })
                 insertStmt.finalize(resolve)
             })
         })
     })    
 }
+
+(async () => {
+    await getCols()
+    // for(const colName of colsToReduce){
+    //     await createMapperTable(colName)
+    //     await fillMapperTable(colName)
+    // }
+    // await createReducedTable()
+     await fillReducedTable()
+})()
